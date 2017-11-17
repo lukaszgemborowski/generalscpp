@@ -20,6 +20,7 @@ DEALINGS IN THE SOFTWARE.
 #include "ncurses.hpp"
 #include "field.hpp"
 #include "board.hpp"
+#include "position.hpp"
 
 #include <array>
 #include <random>
@@ -29,16 +30,6 @@ DEALINGS IN THE SOFTWARE.
 #include <queue>
 #include <boost/asio.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
-
-struct position
-{
-	position() = default;
-	position(std::size_t x, std::size_t y) : x_(x), y_(y) {}
-	std::size_t x_ = 0, y_ = 0;
-
-	auto x() const { return x_; }
-	auto y() const { return y_; }
-};
 
 struct settings {
 	int max_players = 2;
