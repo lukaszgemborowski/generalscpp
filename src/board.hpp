@@ -28,10 +28,6 @@ struct board
 		return fields_[y * width() + x];
 	}
 
-	bool adjecent(std::size_t x, std::size_t y, Color color) const
-	{
-	}
-
 	auto begin() { return fields_.begin(); }
 	auto end() { return fields_.end(); }
 
