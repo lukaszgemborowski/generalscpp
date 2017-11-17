@@ -317,26 +317,13 @@ private:
 	player_id id_;
 };
 
-struct client_field : public field
-{
-	client_field(const field &f) :
-		field(f) {}
-
-	bool cursor_ = false;
-};
-
 struct client_view
 {
 	client_view(client &c) : client_(c) {}
 
 	auto at(std::size_t x, std::size_t y)
 	{
-		auto f = client_field(client_.at(x, y));
-
-		if (x == cursor_.x_ && y == cursor_.y_)
-			f.cursor_ = true;
-
-		return f;
+		return client_.at(x, y);
 	}
 
 	auto width() const { return client_.map_width(); }
@@ -369,6 +356,11 @@ struct client_view
 	auto is_active() const
 	{
 		return active_;
+	}
+
+	auto cursor() const
+	{
+		return cursor_;
 	}
 
 private:
@@ -416,7 +408,7 @@ void draw(ncurses &nc, B &b)
 				attr |= A_DIM;
 			}
 
-			if (f.cursor_) {
+			if (b.cursor().x() == x && b.cursor().y() == y) {
 				if (b.is_active()) {
 					attr |= A_BOLD | A_REVERSE;
 				} else {
@@ -436,6 +428,43 @@ void draw(ncurses &nc, B &b)
 			nc.popall();
 		}
 	}
+}
+
+void draw2(ncurses &nc, client_view &v)
+{
+	auto for_all_fields = [&nc, &v](auto func) {
+		for (auto x = 0u; x < v.width(); x ++) {
+			for (auto y = 0u; y < v.height(); y ++) {
+				func(nc, v, x, y, v.at(x, y));
+			}
+		}
+	};
+
+	auto draw_numbers = [](auto &nc, auto &v, auto x, auto y, auto f) {
+		nc.push_color(v.playerColor(f.player_), Color::Black);
+
+		mvprintw((y * 2) + 1, x * 5 + 1, "%4d", f.count_);
+
+		nc.pop();
+	};
+
+	auto draw_borders = [](auto &nc, auto &v, auto x, auto y, auto f) {
+		mvprintw((y * 2)    , x * 5, "+----+");
+		mvaddch ((y * 2) + 1, x * 5, '|');
+		mvaddch ((y * 2) + 1, x * 5 + 5, '|');
+		mvprintw((y * 2) + 2, x * 5, "+----+");
+	};
+
+	for_all_fields(draw_numbers);
+	for_all_fields(draw_borders);
+
+	if (v.is_active())
+		nc.push(A_REVERSE | A_BOLD);
+	else
+		nc.push(A_REVERSE);
+
+	draw_borders(nc, v, v.cursor().x(), v.cursor().y(), v.at(v.cursor().x(), v.cursor().y()));
+	nc.pop();
 }
 
 struct keyboard_listener
@@ -516,7 +545,7 @@ struct single_player_instance
 
 	void redraw()
 	{
-		draw(ncurses_, view_);
+		draw2(ncurses_, view_);
 		refresh();
 	}
 
