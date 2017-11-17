@@ -152,7 +152,7 @@ private:
 	}
 
 private:
-	std::size_t width_, height_;
+	const std::size_t width_, height_;
 	std::vector<field> fields_;
 };
 
@@ -308,9 +308,16 @@ struct client_view
 			cursor_.y_ ++;
 	}
 
+	void toggle_active()
+	{
+		active_ = !active_;
+	}
+
+
 private:
 	client &client_;
 	position cursor_;
+	bool active_ = false;
 };
 
 template<typename B>
