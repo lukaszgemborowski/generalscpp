@@ -238,10 +238,21 @@ struct game
 			}
 		}
 
-		for (auto &f : board_) {
-			if ((f.town_ || f.hometown_) && f.player_ != 0)
-				f.count_ ++;
+		auto increase = false;
+		if (tick_ % 10 == 0) {
+			increase = true;
 		}
+
+		for (auto &f : board_) {
+			if (f.player_ != 0) {
+				if (f.town_ || f.hometown_)
+					f.count_ ++;
+				else if (increase)
+					f.count_ ++;
+			}
+		}
+
+		tick_ ++;
 	}
 
 	field at(std::size_t x, std::size_t y)
@@ -284,6 +295,7 @@ private:
 	std::vector<player_id> players_;
 	player_id last_id_ = 0;
 	std::map<player_id, std::queue<order>> order_queue_;
+	int tick_ = 0;
 };
 
 struct client
