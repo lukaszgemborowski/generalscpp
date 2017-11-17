@@ -18,6 +18,7 @@ DEALINGS IN THE SOFTWARE.
 */
 
 #include "ncurses.hpp"
+#include "field.hpp"
 
 #include <array>
 #include <random>
@@ -28,22 +29,6 @@ DEALINGS IN THE SOFTWARE.
 #include <boost/asio.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
 
-using player_id = int;
-
-struct field
-{
-	player_id player_ = 0;
-	int count_ = 1;
-	bool hometown_ = false;
-	bool town_ = false;
-};
-
-std::ostream& operator << (std::ostream &os, const field &f)
-{
-	os << "field { player: " << f.player_ << "; count: " << f.count_
-		<< "; hometown: " << f.hometown_ << "; town: " << f.town_ << "; };";
-	return os;
-}
 
 struct board
 {
