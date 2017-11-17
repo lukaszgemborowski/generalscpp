@@ -443,20 +443,33 @@ void draw2(ncurses &nc, client_view &v)
 	auto draw_numbers = [](auto &nc, auto &v, auto x, auto y, auto f) {
 		nc.push_color(v.playerColor(f.player_), Color::Black);
 
-		mvprintw((y * 2) + 1, x * 5 + 1, "%4d", f.count_);
+		mvprintw((y * 3) + 2, x * 6 + 1, "%5d", f.count_);
 
 		nc.pop();
 	};
 
+	auto draw_type = [](auto &nc, auto &v, auto x, auto y, auto f) {
+		auto logo = ' ';
+		if (f.town_)
+			logo = 'm';
+		if (f.hometown_)
+			logo = 'W';
+
+		nc.push_color(v.playerColor(f.player_), Color::Black);
+		mvaddch((y * 3) + 1, x * 6 + 3, logo);
+		nc.pop();
+	};
+
 	auto draw_borders = [](auto &nc, auto &v, auto x, auto y, auto f) {
-		mvprintw((y * 2)    , x * 5, "+----+");
-		mvaddch ((y * 2) + 1, x * 5, '|');
-		mvaddch ((y * 2) + 1, x * 5 + 5, '|');
-		mvprintw((y * 2) + 2, x * 5, "+----+");
+		mvprintw((y * 3)    , x * 6, "+-----+");
+		mvaddch ((y * 3) + 1, x * 6, '|'); mvaddch ((y * 3) + 1, x * 6 + 6, '|');
+		mvaddch ((y * 3) + 2, x * 6, '|'); mvaddch ((y * 3) + 2, x * 6 + 6, '|');
+		mvprintw((y * 3) + 3, x * 6, "+-----+");
 	};
 
 	for_all_fields(draw_numbers);
 	for_all_fields(draw_borders);
+	for_all_fields(draw_type);
 
 	if (v.is_active())
 		nc.push(A_REVERSE | A_BOLD);
