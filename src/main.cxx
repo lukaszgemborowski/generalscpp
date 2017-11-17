@@ -24,6 +24,7 @@ DEALINGS IN THE SOFTWARE.
 #include <stack>
 #include <tuple>
 #include <thread>
+#include <queue>
 #include <boost/asio.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
 
@@ -113,6 +114,12 @@ struct field
 	bool town_ = false;
 };
 
+std::ostream& operator << (std::ostream &os, const field &f)
+{
+	os << "field { player: " << f.player_ << "; count: " << f.count_
+		<< "; hometown: " << f.hometown_ << "; town: " << f.town_ << "; };";
+	return os;
+}
 
 struct board
 {
@@ -152,7 +159,7 @@ private:
 	}
 
 private:
-	std::size_t width_, height_;
+	const std::size_t width_, height_;
 	std::vector<field> fields_;
 };
 
@@ -169,6 +176,12 @@ struct position
 
 struct settings {
 	int max_players = 2;
+};
+
+struct order {
+	player_id player;
+	position start;
+	position end;
 };
 
 struct game
@@ -193,6 +206,38 @@ struct game
 
 	void tick()
 	{
+		for (auto &oqpair : order_queue_) {
+			auto &q = oqpair.second;
+			if (q.empty())
+				continue;
+
+			auto player = oqpair.first;
+			auto order = q.front();
+			q.pop();
+
+			auto &start_field = board_.at(order.start.x(), order.start.y());
+			auto &end_field = board_.at(order.end.x(), order.end.y());
+
+			if (start_field.player_ != player)
+				continue;
+
+			auto count = start_field.count_;
+			start_field.count_ = 0;
+
+			if (end_field.player_ == player) {
+				// transfer
+				end_field.count_ += count;
+			} else {
+				// attack
+				if (count > end_field.count_) {
+					end_field.count_ = count - end_field.count_;
+					end_field.player_ = player;
+				} else {
+					end_field.count_ -= count;
+				}
+			}
+		}
+
 		for (auto &f : board_) {
 			if ((f.town_ || f.hometown_) && f.player_ != 0)
 				f.count_ ++;
@@ -210,6 +255,12 @@ struct game
 
 	auto map_height() const {
 		return board_.height();
+	}
+
+	void move_order(player_id player, position start, position end)
+	{
+		// TODO: verify player existance
+		order_queue_[player].push(order{player, start, end});
 	}
 
 private:
@@ -232,6 +283,7 @@ private:
 
 	std::vector<player_id> players_;
 	player_id last_id_ = 0;
+	std::map<player_id, std::queue<order>> order_queue_;
 };
 
 struct client
@@ -253,6 +305,11 @@ struct client
 
 	auto map_height() const {
 		return game_.map_height();
+	}
+
+	void move_order(position start, position stop)
+	{
+		game_.move_order(id_, start, stop);
 	}
 
 private:
@@ -298,6 +355,32 @@ struct client_view
 	}
 
 	void move_cursor(int x, int y) {
+		if (active_)
+			move_order(x, y);
+		else
+			move_user_cursor(x, y);
+	}
+
+	void toggle_active()
+	{
+		active_ = !active_;
+	}
+
+	auto is_active() const
+	{
+		return active_;
+	}
+
+private:
+	void move_order(int x, int y)
+	{
+		auto start_pos = cursor_;
+		move_user_cursor(x, y);
+		client_.move_order(start_pos, cursor_);
+	}
+
+	void move_user_cursor(int x, int y)
+	{
 		if (x < 0 && cursor_.x_ > 0)
 			cursor_.x_ --;
 		if (x > 0 && cursor_.x_ < width() - 1)
@@ -311,6 +394,7 @@ struct client_view
 private:
 	client &client_;
 	position cursor_;
+	bool active_ = false;
 };
 
 template<typename B>
@@ -322,18 +406,25 @@ void draw(ncurses &nc, B &b)
 
 			nc.push_color(b.playerColor(f.player_), Color::Black);
 
+			int attr = 0;
+
 			if (f.hometown_) {
-				nc.push(A_BOLD);
-				nc.push(A_UNDERLINE);
+				attr |= A_BOLD | A_UNDERLINE;
 			}
 
 			if (f.town_) {
-				nc.push(A_DIM);
+				attr |= A_DIM;
 			}
 
 			if (f.cursor_) {
-				nc.push(A_REVERSE);
+				if (b.is_active()) {
+					attr |= A_BOLD | A_REVERSE;
+				} else {
+					attr |= A_REVERSE;
+				}
 			}
+
+			nc.push(attr);
 
 			auto count = '0';
 			if (f.count_ < 10)
@@ -395,6 +486,8 @@ struct keyboard
 			client_view_.move_cursor(-1, 0);
 		if (key == 'd')
 			client_view_.move_cursor(1, 0);
+		if (key == ' ')
+			client_view_.toggle_active();
 	}
 
 private:
